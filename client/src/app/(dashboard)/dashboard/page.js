@@ -2,7 +2,7 @@
 
 import { useUser } from '@clerk/nextjs';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { CalendarDays, Trophy, Flame } from 'lucide-react';
+import { CalendarDays, Trophy, Flame, Crown } from 'lucide-react';
 
 export default function DashboardPage() {
     const { user, isLoaded } = useUser();

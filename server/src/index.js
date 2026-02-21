@@ -35,24 +35,16 @@ app.use(limiter);
 app.use('/api/auth', require('./routes/auth'));
 
 // ----- Body Parsing -----
-// Parse JSON bodies (skip for Stripe webhooks which need raw body)
-app.use((req, res, next) => {
-    if (req.originalUrl === '/api/subscriptions/webhook') {
-        next();
-    } else {
-        express.json({ limit: '10mb' })(req, res, next);
-    }
-});
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// ----- Routes (Post-JSON Parsing) -----
+// ----- Routes -----
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ success: true, message: 'CareerMaster API is running 🚀', timestamp: new Date().toISOString() });
 });
 
-// Route mounting (will be added in subsequent modules)
-// app.use('/api/auth',          require('./routes/auth')); // This line was moved
+// API routes
 app.use('/api/users', require('./routes/users'));
 app.use('/api/videos', require('./routes/videos'));
 app.use('/api/leetcode', require('./routes/leetcode'));
@@ -60,10 +52,7 @@ app.use('/api/subscriptions', require('./routes/subscriptions'));
 app.use('/api/admin', require('./routes/admin'));
 
 // ----- Error Handling -----
-// Initialize Sentry error handler (must be after routes)
 initSentry(app);
-
-// Global error handler
 app.use(errorHandler);
 
 // ----- Start Server -----
