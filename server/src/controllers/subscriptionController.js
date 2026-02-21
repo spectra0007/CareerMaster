@@ -1,8 +1,9 @@
-const stripe = require('../config/stripe');
+const crypto = require('crypto');
+const razorpay = require('../config/razorpay');
 const userService = require('../services/userService');
 const subscriptionService = require('../services/subscriptionService');
 
-const createCheckoutSession = async (req, res) => {
+const createOrder = async (req, res) => {
     const clerkId = req.auth.userId;
     const user = await userService.getUserProfile(clerkId);
 
@@ -10,91 +11,56 @@ const createCheckoutSession = async (req, res) => {
         return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    let customerId = undefined;
-    // If user already has a subscription record (maybe canceled), use that customer ID
-    if (user.stripe_customer_id) {
-        customerId = user.stripe_customer_id;
+    if (!razorpay) {
+        return res.status(500).json({ success: false, error: 'Razorpay keys not configured on server' });
     }
 
-    const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        mode: 'subscription',
-        customer: customerId,
-        customer_email: customerId ? undefined : user.email,
-        line_items: [
-            {
-                price: process.env.STRIPE_PRICE_ID,
-                quantity: 1,
-            },
-        ],
-        subscription_data: {
-            metadata: {
-                user_id: user.id, // Critical for webhook mapper
-            },
-        },
-        success_url: `${process.env.CLIENT_URL}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.CLIENT_URL}/pricing`,
-    });
+    try {
+        const options = {
+            amount: 249900, // ₹2499.00 in paise
+            currency: 'INR',
+            receipt: `rcpt_${user.id}_${Date.now()}`
+        };
 
-    res.json({ success: true, url: session.url });
+        const order = await razorpay.orders.create(options);
+        res.json({ success: true, order });
+    } catch (err) {
+        console.error('Error creating Razorpay order:', err);
+        res.status(500).json({ error: 'Failed to create order' });
+    }
 };
 
-const createPortalSession = async (req, res) => {
+const verifyPayment = async (req, res) => {
     const clerkId = req.auth.userId;
     const user = await userService.getUserProfile(clerkId);
 
-    // We need to fetch their customer ID from the DB.
-    // We need to add stripe_customer_id to getUserProfile query. I will update userService later if needed.
-    // Actually, let's just query it here for simplicity.
-    const pool = require('../config/db');
-    const { rows } = await pool.query('SELECT stripe_customer_id FROM subscriptions WHERE user_id = $1 LIMIT 1', [user.id]);
-    const customerId = rows[0]?.stripe_customer_id;
-
-    if (!customerId) {
-        return res.status(400).json({ success: false, error: 'No active subscription found' });
+    if (!user) {
+        return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    const portalSession = await stripe.billingPortal.sessions.create({
-        customer: customerId,
-        return_url: `${process.env.CLIENT_URL}/dashboard`,
-    });
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
-    res.json({ success: true, url: portalSession.url });
-};
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto
+        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+        .update(body.toString())
+        .digest('hex');
 
-const handleWebhook = async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    let event;
-
-    try {
-        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-    } catch (err) {
-        console.error(`❌ Stripe Webhook Error: ${err.message}`);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    try {
-        switch (event.type) {
-            case 'customer.subscription.created':
-            case 'customer.subscription.updated':
-                await subscriptionService.handleSubscriptionChange(event.data.object);
-                break;
-            case 'customer.subscription.deleted':
-                await subscriptionService.handleSubscriptionDeleted(event.data.object);
-                break;
-            default:
-                console.log(`Unhandled Stripe event type ${event.type}`);
+    if (expectedSignature === razorpay_signature) {
+        // Payment is legit. Save to DB.
+        try {
+            await subscriptionService.activateSubscription(user.id, razorpay_payment_id);
+            res.json({ success: true });
+        } catch (err) {
+            console.error('Error activating subscription:', err);
+            res.status(500).json({ success: false, error: 'Failed to update database' });
         }
-
-        res.json({ received: true });
-    } catch (err) {
-        console.error(`❌ Webhook processing failed:`, err.message);
-        res.status(500).json({ error: 'Webhook processing failed' });
+    } else {
+        res.status(400).json({ success: false, error: 'Invalid signature. Payment verification failed.' });
     }
 };
 
 module.exports = {
-    createCheckoutSession,
-    createPortalSession,
-    handleWebhook,
+    createOrder,
+    verifyPayment,
 };

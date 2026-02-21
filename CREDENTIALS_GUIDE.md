@@ -9,12 +9,12 @@ We use Supabase for PostgreSQL.
 1. Sign up at [supabase.com](https://supabase.com).
 2. Create a new "Project" and wait for the database to provision.
 3. Go to **Project Settings → Database → Connection string (URI)**.
-4. Replace `[YOUR-PASSWORD]` with the password you made during creation.
+4. Copy the connection string. Replace `[YOUR-PASSWORD]` with the database password you created when making the project.
 5. In `server/.env`, set:
    ```env
    DATABASE_URL=postgresql://postgres:[PASSWORD]@[HOST]:5432/postgres
    ```
-6. **Important:** Go to the "SQL Editor" in Supabase, paste the contents of `schema.sql`, and click "Run" to create your tables.
+6. **Important:** Go to the "SQL Editor" tab in Supabase, copy all the SQL from `schema.sql` found in the root of this repository, paste it in the Supabase editor, and click "Run" to create your tables.
 
 ---
 
@@ -34,22 +34,15 @@ We use Clerk for handling user logins.
 
 ---
 
-## 3. Stripe (Payments & Subscriptions)
-Stripe handles the premium video paywall.
-1. Sign up at [stripe.com](https://stripe.com).
+## 3. Razorpay (Payments & Subscriptions)
+Razorpay handles the premium video paywall. It's fully supported in India.
+1. Sign up at [razorpay.com](https://razorpay.com).
 2. Ensure you are in "Test Mode".
-3. Go to **Developers → API Keys**.
-   - In `client/.env.local`: `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...`
-   - In `server/.env`: `STRIPE_SECRET_KEY=sk_test_...`
-4. **Create a Subscription Product:**
-   - Go to the "Products" tab and click "Add Product". Make it a recurring monthly subscription (e.g., $29/mo).
-   - Go to the Pricing details and copy the **API ID** that starts with `price_...`.
-   - In `server/.env`, set `STRIPE_PRICE_ID=price_...`
-5. **Setup Webhook (To activate user's subscription in DB):**
-   - If developing locally, download the [Stripe CLI](https://stripe.com/docs/stripe-cli) and run:
-     `stripe listen --forward-to localhost:5001/api/subscriptions/webhook`
-   - It will print out a webhook signing secret (`whsec_...`).
-   - In `server/.env`, set `STRIPE_WEBHOOK_SECRET=whsec_...`
+3. Go to **Account Settings → API Keys** and generate Test Keys.
+4. Copy the keys to your environments:
+   - In `client/.env.local`: `NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_...`
+   - In `server/.env`: `RAZORPAY_KEY_ID=rzp_test_...`
+   - In `server/.env`: `RAZORPAY_KEY_SECRET=...`
 
 ---
 

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth, useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import api, { setAuthToken } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Check, ArrowLeft } from 'lucide-react';
+import Script from 'next/script';
 
 export default function PricingPage() {
     const { getToken, isLoaded, isSignedIn } = useAuth();
@@ -24,9 +25,48 @@ export default function PricingPage() {
         try {
             const token = await getToken();
             setAuthToken(token);
-            const res = await api.post('/subscriptions/checkout');
-            if (res.url) {
-                window.location.href = res.url;
+
+            // Step 1: Create an order on the backend
+            const res = await api.post('/subscriptions/order');
+
+            if (res.order) {
+                // Step 2: Initialize Razorpay Checkout
+                const options = {
+                    key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+                    amount: res.order.amount,
+                    currency: res.order.currency,
+                    name: 'CareerMaster',
+                    description: 'CareerMaster Pro Subscription',
+                    order_id: res.order.id, // The order ID created in the backend
+                    handler: async function (response) {
+                        // Step 3: Verify the payment back to the server
+                        try {
+                            setAuthToken(token);
+                            await api.post('/subscriptions/verify', {
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature
+                            });
+                            alert('Payment successful! You are now a PRO member.');
+                            router.push('/dashboard');
+                        } catch (err) {
+                            alert('Payment Verification failed. Please contact support.');
+                        }
+                    },
+                    prefill: {
+                        name: user?.fullName || '',
+                        email: user?.primaryEmailAddress?.emailAddress || '',
+                    },
+                    theme: {
+                        color: '#2563EB', // blue-600
+                    }
+                };
+
+                const rzp = new window.Razorpay(options);
+                rzp.on('payment.failed', function (response) {
+                    alert('Payment Failed: ' + response.error.description);
+                });
+                rzp.open();
             }
         } catch (err) {
             console.error('Checkout failed', err);
@@ -38,6 +78,8 @@ export default function PricingPage() {
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col pt-12">
+            <Script src="https://checkout.razorpay.com/v1/checkout.js" />
+
             <div className="max-w-7xl mx-auto px-4 w-full">
                 <button
                     onClick={() => router.back()}
@@ -58,7 +100,7 @@ export default function PricingPage() {
                             <CardTitle className="text-2xl text-gray-900">CareerMaster Pro</CardTitle>
                             <CardDescription className="text-base mt-2">Unlock all premium pathways and videos.</CardDescription>
                             <div className="mt-6 flex items-baseline justify-center gap-x-2">
-                                <span className="text-5xl font-bold tracking-tight text-gray-900">$29</span>
+                                <span className="text-5xl font-bold tracking-tight text-gray-900">₹2499</span>
                                 <span className="text-sm font-semibold leading-6 text-gray-600">/month</span>
                             </div>
                         </CardHeader>
