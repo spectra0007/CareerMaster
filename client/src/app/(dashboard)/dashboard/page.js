@@ -2,7 +2,7 @@
 
 import { useUser } from '@clerk/nextjs';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { CalendarDays, Trophy, Flame, Crown } from 'lucide-react';
+import { CalendarDays, Trophy, Flame, Crown, Target, Lightbulb, PenTool } from 'lucide-react';
 
 export default function DashboardPage() {
     const { user, isLoaded } = useUser();
@@ -56,6 +56,54 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Mission, Vision, and Message Section */}
+            <Card className="bg-white border-blue-100 shadow-sm">
+                <CardContent className="p-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Mission */}
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-blue-600">
+                                <Target className="w-6 h-6" />
+                                <h3 className="text-xl font-bold text-gray-900">Mission</h3>
+                            </div>
+                            <p className="text-sm text-gray-600 leading-relaxed">
+                                Campus Cracker aims to facilitate and guide engineering students for their overall personality development, help them secure good internships, and ultimately enable them to become a Successful Campus Cracker!
+                            </p>
+                        </div>
+
+                        {/* Vision */}
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-blue-600">
+                                <Lightbulb className="w-6 h-6" />
+                                <h3 className="text-xl font-bold text-gray-900">Vision</h3>
+                            </div>
+                            <p className="text-sm text-gray-600 leading-relaxed">
+                                Engineering is a career with unlimited possibilities. We, as a team of engineers ourselves, want to make our younger brothers and sisters Successful Campus Crackers and ready them for life after four years of engineering.
+                            </p>
+                        </div>
+
+                        {/* Director's Note */}
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-blue-600">
+                                <PenTool className="w-6 h-6" />
+                                <h3 className="text-xl font-bold text-gray-900">संरक्षक की कलम से ...</h3>
+                            </div>
+                            <div className="text-sm text-gray-600 leading-relaxed space-y-2">
+                                <p>इंजिनीयरिंग के चार वर्ष प्रकाश की गति से बीत जाते हैं। मैं और मेरे साथी अभियंता गण अपने छोटे भाई-बहनों को उन बिन्दुओं पर मार्गदर्शन देना चाहते हैं जो उन्हें एक यादगार अनुभव दे सकें, जैसे:</p>
+                                <ul className="list-disc pl-4 space-y-1">
+                                    <li>अच्छी कम्युनिकेशन स्किल</li>
+                                    <li>Goal Oriented Thinking</li>
+                                    <li>Paid / Unpaid Internship</li>
+                                    <li>Industry के सफल लोगों से Online/Offline Interaction</li>
+                                    <li>Mock Test & Mock Interview</li>
+                                </ul>
+                                <p className="font-medium text-gray-900 mt-2">और अंततः हमारा Goal है कि आप सब काबिल बनें, Campus Champion और Campus Cracker बनें।</p>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
 
             <div className="grid lg:grid-cols-2 gap-8">
                 <Card className="col-span-1">
